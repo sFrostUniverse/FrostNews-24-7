@@ -150,3 +150,13 @@ ValueError: invalid literal for int() with base 10: 'channel_id'
 [2025-07-12 19:40:28,468] [INFO] Auto-fetching headlines...
 [2025-07-12 19:40:28,763] [ERROR] [NDTV] Failed: 403 Client Error: Forbidden for url: https://www.ndtv.com/latest
 [2025-07-12 19:40:29,673] [INFO] Headlines sent to beastboy00k0146's server (general)
+[2025-08-23 23:20:06,630] [WARNING] Privileged message content intent is missing, commands may not work as expected.
+[2025-08-23 23:20:06,631] [INFO] logging in using static token
+[2025-08-23 23:20:06,643] [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.16.54.32:8080
+[2025-08-23 23:20:06,643] [INFO] [33mPress CTRL+C to quit[0m
+[2025-08-23 23:20:08,459] [INFO] Shard ID None has connected to Gateway (Session ID: 6c969f8f04a19c703e8a9788ae726f64).
+[2025-08-23 23:20:10,527] [INFO] Auto-fetching headlines...
+[2025-08-23 23:20:18,646] [INFO] Headlines sent to beastboy00k0146's server (general)

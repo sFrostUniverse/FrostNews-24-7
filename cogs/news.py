@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands, tasks
 from discord import app_commands
-import requests, os, logging
-from bs4 import BeautifulSoup
+import logging
+import feedparser
 from utils.config import load_config
 
 
@@ -29,31 +29,18 @@ class NewsCog(commands.Cog):
         return self.scrape_indian_express(limit=2) + self.scrape_ndtv(limit=2)
 
     def scrape_indian_express(self, limit=2):
-        url = "https://indianexpress.com/"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        feed_url = "https://indianexpress.com/section/latest-news/feed/"
         headlines = []
 
         try:
-            res = requests.get(url, headers=headers, timeout=5)
-            res.raise_for_status()
-            soup = BeautifulSoup(res.text, "html.parser")
-            articles = soup.select("div.main-story, div.lead-story, div.other-article")
+            feed = feedparser.parse(feed_url)
         except Exception as e:
-            logging.error(f"[IndianExpress] Failed: {e}")
+            logging.error(f"[IndianExpress] RSS Failed: {e}")
             return []
 
-        for article in articles:
-            link_tag = article.find("a", href=True)
-            if not link_tag:
-                continue
-
-            title = link_tag.get_text(strip=True)
-            link = link_tag["href"]
-            if not title or not link.startswith("http"):
-                continue
-
-            img_tag = article.find("img")
-            img_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else None
+        for entry in feed.entries[:limit]:
+            title = entry.title
+            link = entry.link
 
             embed = discord.Embed(
                 title=title,
@@ -61,42 +48,33 @@ class NewsCog(commands.Cog):
                 description="📰 Source: Indian Express",
                 color=discord.Color.orange()
             )
-            if img_url:
-                embed.set_thumbnail(url=img_url)
+
+            # ✅ Improved thumbnail handling
+            if "media_thumbnail" in entry and entry.media_thumbnail:
+                embed.set_thumbnail(url=entry.media_thumbnail[0]["url"])
+            elif "media_content" in entry and entry.media_content:
+                embed.set_thumbnail(url=entry.media_content[0]["url"])
+            elif "enclosures" in entry and entry.enclosures:
+                embed.set_thumbnail(url=entry.enclosures[0]["href"])
+
             embed.set_footer(text="FrostNews 24/7 • IndianExpress.com")
             headlines.append(embed)
-
-            if len(headlines) >= limit:
-                break
 
         return headlines
 
     def scrape_ndtv(self, limit=2):
-        url = "https://www.ndtv.com/latest"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        feed_url = "https://feeds.feedburner.com/ndtvnews-latest"
         headlines = []
 
         try:
-            res = requests.get(url, headers=headers, timeout=5)
-            res.raise_for_status()
-            soup = BeautifulSoup(res.text, "html.parser")
-            articles = soup.select("div.new_storylising > ul > li")
+            feed = feedparser.parse(feed_url)
         except Exception as e:
-            logging.error(f"[NDTV] Failed: {e}")
+            logging.error(f"[NDTV] RSS Failed: {e}")
             return []
 
-        for article in articles:
-            link_tag = article.find("a", href=True)
-            if not link_tag:
-                continue
-
-            title = link_tag.get_text(strip=True)
-            link = link_tag["href"]
-            if not title or not link.startswith("http"):
-                continue
-
-            img_tag = article.find("img")
-            img_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else None
+        for entry in feed.entries[:limit]:
+            title = entry.title
+            link = entry.link
 
             embed = discord.Embed(
                 title=title,
@@ -104,17 +82,21 @@ class NewsCog(commands.Cog):
                 description="📰 Source: NDTV",
                 color=discord.Color.dark_blue()
             )
-            if img_url:
-                embed.set_thumbnail(url=img_url)
+
+            # ✅ Improved thumbnail handling
+            if "media_thumbnail" in entry and entry.media_thumbnail:
+                embed.set_thumbnail(url=entry.media_thumbnail[0]["url"])
+            elif "media_content" in entry and entry.media_content:
+                embed.set_thumbnail(url=entry.media_content[0]["url"])
+            elif "enclosures" in entry and entry.enclosures:
+                embed.set_thumbnail(url=entry.enclosures[0]["href"])
+
             embed.set_footer(text="FrostNews 24/7 • NDTV.com")
             headlines.append(embed)
 
-            if len(headlines) >= limit:
-                break
-
         return headlines
 
-    @tasks.loop(minutes=15)
+    @tasks.loop(minutes=30)  # ⏱️ every 30 min
     async def fetch_news(self):
         logging.info("Auto-fetching headlines...")
         embeds = self.get_all_headlines()
