@@ -1,18 +1,13 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord import app_commands
 import logging
 import feedparser
-from utils.config import load_config
 
 
 class NewsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.fetch_news.start()
-
-    def cog_unload(self):
-        self.fetch_news.cancel()
 
     @app_commands.command(name="news", description="Fetch top headlines from multiple sources")
     async def manual_news(self, interaction: discord.Interaction):
@@ -29,27 +24,22 @@ class NewsCog(commands.Cog):
         return self.scrape_indian_express(limit=2) + self.scrape_ndtv(limit=2)
 
     def scrape_indian_express(self, limit=2):
-        feed_url = "https://indianexpress.com/section/latest-news/feed/"
+        url = "https://indianexpress.com/section/latest-news/feed/"
         headlines = []
-
         try:
-            feed = feedparser.parse(feed_url)
+            feed = feedparser.parse(url)
         except Exception as e:
             logging.error(f"[IndianExpress] RSS Failed: {e}")
             return []
 
         for entry in feed.entries[:limit]:
-            title = entry.title
-            link = entry.link
-
             embed = discord.Embed(
-                title=title,
-                url=link,
+                title=entry.title,
+                url=entry.link,
                 description="📰 Source: Indian Express",
                 color=discord.Color.orange()
             )
 
-            # ✅ Improved thumbnail handling
             if "media_thumbnail" in entry and entry.media_thumbnail:
                 embed.set_thumbnail(url=entry.media_thumbnail[0]["url"])
             elif "media_content" in entry and entry.media_content:
@@ -59,31 +49,25 @@ class NewsCog(commands.Cog):
 
             embed.set_footer(text="FrostNews 24/7 • IndianExpress.com")
             headlines.append(embed)
-
         return headlines
 
     def scrape_ndtv(self, limit=2):
-        feed_url = "https://feeds.feedburner.com/ndtvnews-latest"
+        url = "https://feeds.feedburner.com/ndtvnews-latest"
         headlines = []
-
         try:
-            feed = feedparser.parse(feed_url)
+            feed = feedparser.parse(url)
         except Exception as e:
             logging.error(f"[NDTV] RSS Failed: {e}")
             return []
 
         for entry in feed.entries[:limit]:
-            title = entry.title
-            link = entry.link
-
             embed = discord.Embed(
-                title=title,
-                url=link,
+                title=entry.title,
+                url=entry.link,
                 description="📰 Source: NDTV",
                 color=discord.Color.dark_blue()
             )
 
-            # ✅ Improved thumbnail handling
             if "media_thumbnail" in entry and entry.media_thumbnail:
                 embed.set_thumbnail(url=entry.media_thumbnail[0]["url"])
             elif "media_content" in entry and entry.media_content:
@@ -93,29 +77,7 @@ class NewsCog(commands.Cog):
 
             embed.set_footer(text="FrostNews 24/7 • NDTV.com")
             headlines.append(embed)
-
         return headlines
-
-    @tasks.loop(minutes=30)  # ⏱️ every 30 min
-    async def fetch_news(self):
-        logging.info("Auto-fetching headlines...")
-        embeds = self.get_all_headlines()
-
-        if not embeds:
-            logging.warning("No headlines to send.")
-            return
-
-        config = load_config()
-        for guild_id, guild_data in config.items():
-            channel_id = int(guild_data["news_channel"])
-            channel = self.bot.get_channel(channel_id)
-            if channel:
-                try:
-                    for embed in embeds:
-                        await channel.send(embed=embed)
-                    logging.info(f"Headlines sent to {channel.guild.name} ({channel.name})")
-                except Exception as e:
-                    logging.error(f"Failed to send to {channel_id}: {e}")
 
 
 async def setup(bot):
