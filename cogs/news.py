@@ -5,6 +5,13 @@ import feedparser
 import logging
 
 
+INDIAN_STATES = [
+    "Delhi", "Maharashtra", "Karnataka", "Kerala", "Tamil Nadu",
+    "Uttar Pradesh", "Rajasthan", "Punjab", "Haryana",
+    "West Bengal", "Bihar", "Gujarat", "Telangana", "Andhra Pradesh"
+]
+
+
 NEWS_SOURCES = {
     "india": [
         {
@@ -70,21 +77,24 @@ class NewsCog(commands.Cog):
             app_commands.Choice(name="Technology", value="tech"),
             app_commands.Choice(name="Business", value="business"),
             app_commands.Choice(name="World", value="world"),
-        ]
+        ],
+        state=[app_commands.Choice(name=s, value=s.lower()) for s in INDIAN_STATES]
     )
     async def news(
         self,
         interaction: discord.Interaction,
         region: app_commands.Choice[str] | None = None,
         topic: app_commands.Choice[str] | None = None,
-        state: str | None = None
+        state: app_commands.Choice[str] | None = None
     ):
-        await interaction.response.defer()
+        # ✅ SAFE defer
+        if not interaction.response.is_done():
+            await interaction.response.defer(thinking=True)
 
         embeds = self.fetch_news(
             region=region.value if region else None,
             topic=topic.value if topic else None,
-            state=state
+            state=state.value if state else None
         )
 
         if not embeds:
@@ -116,7 +126,7 @@ class NewsCog(commands.Cog):
                     if topic and topic not in title:
                         continue
 
-                    if state and state.lower() not in title:
+                    if state and state not in title:
                         continue
 
                     embed = discord.Embed(
