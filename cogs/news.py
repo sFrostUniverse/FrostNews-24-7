@@ -88,8 +88,14 @@ class NewsCog(commands.Cog):
         state: app_commands.Choice[str] | None = None
     ):
         # ✅ SAFE defer
-        if not interaction.response.is_done():
-            await interaction.response.defer(thinking=True)
+        from discord.errors import NotFound
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.defer(thinking=True)
+        except NotFound:
+            # Interaction already expired on Discord side
+            return
+
 
         embeds = self.fetch_news(
             region=region.value if region else None,
